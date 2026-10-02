@@ -1,0 +1,25 @@
+{
+  "entities": {
+    "AppState": {
+      "title": "AppState",
+      "description": "El estado global del blog gastronómico Lugarcitos",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "resenas": { "type": "array" },
+        "recetas": { "type": "array" },
+        "pendientes": { "type": "array" },
+        "config": { "type": "object" },
+        "sobreNosotros": { "type": "object" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["resenas", "recetas", "pendientes", "config"]
+    }
+  },
+  "firestore": {
+    "/lugarcitos_state/{stateId}": {
+      "schema": "AppState",
+      "description": "Estado global sincronizado en tiempo real para todos los dispositivos"
+    }
+  }
+}

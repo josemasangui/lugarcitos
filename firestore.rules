@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Lectura pública para cualquier visitante en Netlify y móviles
+    // Escritura permitida para sincronizar el estado del editor
+    match /lugarcitos_state/{stateId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

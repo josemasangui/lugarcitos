@@ -1,0 +1,207 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #181816;
+  --paper: #FAF8F5;
+  --cherry: #9E2A2B;
+  --terracotta: #C85A32;
+  --mustard: #D4A373;
+  --sage: #7B8C74;
+  --olive: #556B2F;
+  --white: #ffffff;
+  --smoke: #737373;
+
+  /* Varied, vibrant pastel palette */
+  --pastel-peach: #FFF2EA;
+  --pastel-peach-border: #FED7C2;
+  --pastel-peach-text: #C85A32;
+
+  --pastel-matcha: #EEF7EF;
+  --pastel-matcha-border: #CFE9D2;
+  --pastel-matcha-text: #367643;
+
+  --pastel-butter: #FEF9E7;
+  --pastel-butter-border: #FCE6A3;
+  --pastel-butter-text: #B27B13;
+
+  --pastel-berry: #FDF0F2;
+  --pastel-berry-border: #F9CFD6;
+  --pastel-berry-text: #BA2D4C;
+
+  --pastel-lilac: #F6F2FC;
+  --pastel-lilac-border: #DFD3F4;
+  --pastel-lilac-text: #6E44AF;
+
+  --pastel-sky: #EEF7FA;
+  --pastel-sky-border: #CAE8F2;
+  --pastel-sky-text: #227090;
+}
+
+body {
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: var(--paper);
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.font-serif-title {
+  font-family: 'DM Serif Display', Georgia, serif;
+}
+
+.font-sans-body {
+  font-family: 'Manrope', sans-serif;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+::-webkit-scrollbar-track {
+  background: #FAF8F5;
+}
+::-webkit-scrollbar-thumb {
+  background: #fcd7c0;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #C85A32;
+}
+
+/* Animations */
+@keyframes floatGentle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.animate-float {
+  animation: floatGentle 4.5s ease-in-out infinite;
+}
+
+/* Custom InfoWindow styling overrides */
+.gm-style .gm-style-iw-c {
+  padding: 0 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 16px 36px rgba(200, 90, 50, 0.15), 0 4px 12px rgba(24, 24, 22, 0.08) !important;
+  border: 1px solid rgba(254, 215, 194, 0.9) !important;
+  background: #FAF8F5 !important;
+}
+
+.gm-style .gm-style-iw-d {
+  overflow: hidden !important;
+  padding: 0 !important;
+}
+
+.gm-style .gm-style-iw-t::after {
+  background: #FAF8F5 !important;
+  box-shadow: -2px 2px 2px rgba(0, 0, 0, 0.06) !important;
+}
+
+.gm-ui-hover-effect {
+  top: 6px !important;
+  right: 6px !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-radius: 50% !important;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
+}
+
+/* Leaflet Custom Styling Overrides */
+.leaflet-container {
+  font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+  background-color: #f5f2ed !important;
+  z-index: 10 !important;
+}
+
+.leaflet-popup-content-wrapper {
+  padding: 0 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 16px 36px rgba(200, 90, 50, 0.15), 0 4px 12px rgba(24, 24, 22, 0.08) !important;
+  border: 1px solid rgba(254, 215, 194, 0.9) !important;
+  background: #FAF8F5 !important;
+  overflow: hidden !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: 1.5 !important;
+}
+
+.leaflet-popup-tip {
+  background: #FAF8F5 !important;
+  box-shadow: 0 4px 12px rgba(24, 24, 22, 0.08) !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  top: 8px !important;
+  right: 8px !important;
+  width: 24px !important;
+  height: 24px !important;
+  color: #181816 !important;
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 16px !important;
+  padding: 0 !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
+  z-index: 20 !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: #C85A32 !important;
+  background: #ffffff !important;
+}
+
+/* OpenStreetMap warm pastel filter to match Lugarcitos aesthetic */
+.leaflet-tile-pane {
+  filter: brightness(0.98) contrast(0.94) saturate(0.82) sepia(0.08);
+}
+
+/* Justificación editorial de textos */
+.text-justify, .formatted-content {
+  text-align: justify;
+  text-justify: inter-word;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+/* Estilos de impresión limpia de recetas */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #181816 !important;
+  }
+  header, footer, nav, .no-print, button {
+    display: none !important;
+  }
+  .print-container {
+    box-shadow: none !important;
+    border: none !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .print-break-inside-avoid {
+    break-inside: avoid;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+
+

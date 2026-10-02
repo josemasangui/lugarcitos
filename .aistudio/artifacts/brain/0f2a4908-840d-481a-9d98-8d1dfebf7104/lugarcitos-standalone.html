@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lugarcitos - Reseñas y Recetas</title>
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <!-- Google Fonts: Manrope & DM Serif Display -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <style>
+    body {
+      font-family: 'Manrope', sans-serif;
+      background-color: #FAF8F5;
+      color: #181816;
+    }
+    .font-serif-title {
+      font-family: 'DM Serif Display', serif;
+    }
+    .leaflet-container {
+      width: 100%;
+      height: 100%;
+      border-radius: 0.75rem;
+    }
+    .leaflet-tile-pane {
+      filter: brightness(0.98) contrast(0.94) saturate(0.82) sepia(0.08);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+  <!-- React & ReactDOM CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <!-- Babel for in-browser JSX transformation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-[#FAF8F5] text-[#181816] min-h-screen flex flex-col antialiased selection:bg-[#C85A32] selection:text-white">
+  <div id="root" class="flex-1 flex flex-col"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    const GAS_URL = 'https://script.google.com/macros/s/AKfycbw32Iq3EmVB8cCZ4NlQMS4Ym7DI4lvKWmeqVq0CEcMcdCYE-vUcv4aQ9tagODNPDjlMIw/exec';
+    const IMGBB_KEY = '23d2d3dd60ce56e488ed63a40c36a99c';
+
+    // Datos iniciales de respaldo
+    const INITIAL_DATA = {
+      resenas: [
+        {
+          id: 'res-1',
+          titulo: 'Café Rastrojo',
+          categoria: 'Cafetería',
+          barrio: 'Palermo Soho',
+          direccion: 'Guatemala 4832, Buenos Aires',
+          lat: -34.5885,
+          lng: -58.4241,
+          descripcion: 'Café de especialidad excepcional en un rincón con plantas y ambiente súper acogedor.',
+          recomendacion: 'Probar el flat white con tostado de masa madre.',
+          imagenUrl: 'https://images.unsplash.com/photo-1501339847302-ac426a4a7cbb?auto=format&fit=crop&w=800&q=80',
+          calificaciones: { ambiente: 5, servicio: 5, comida: 4.5, precioCalidad: 4 },
+          destacado: true,
+          favorito: true,
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: 'res-2',
+          titulo: 'Pizzería El Antojo',
+          categoria: 'Restaurante',
+          barrio: 'Villa Devoto',
+          direccion: 'Tinogasta 3174, Buenos Aires',
+          lat: -34.5985,
+          lng: -58.5141,
+          descripcion: 'La mejor milanesa de Buenos Aires y pizzas al molde tradicionales.',
+          recomendacion: 'Milanesa napo para compartir entre tres.',
+          imagenUrl: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80',
+          calificaciones: { ambiente: 4, servicio: 4.5, comida: 5, precioCalidad: 4.5 },
+          destacado: true,
+          favorito: false,
+          createdAt: new Date().toISOString()
+        }
+      ],
+      recetas: [
+        {
+          id: 'rec-1',
+          titulo: 'Tarta de Limón y Merengue',
+          categoria: 'Pastelería',
+          tiempo: '60 mins',
+          dificultad: 'Media',
+          ingredientes: ['1 masa sablée', 'Jugo de 4 limones', 'Ralladura de limón', '4 yemas', '1 lata de leche condensada', 'Merengue suizo'],
+          pasos: ['Hornear la masa a 180°C.', 'Mezclar yemas, leche condensada y jugo de limón.', 'Rellenar la tarta y hornear 10 mins.', 'Cubrir con merengue suizo tostado.'],
+          imagenUrl: 'https://images.unsplash.com/photo-1519869325930-281384150729?auto=format&fit=crop&w=800&q=80',
+          favorito: true,
+          createdAt: new Date().toISOString()
+        }
+      ],
+      pendientes: [
+        { id: 'p1', texto: 'Visitar Mercado de los Carruajes', completado: false },
+        { id: 'p2', texto: 'Hacer helado casero de pistacho', completado: true }
+      ],
+      galeria: [],
+      deletedIds: [],
+      timestamp: Date.now()
+    };
+
+    function App() {
+      const [state, setState] = useState(INITIAL_DATA);
+      const [activeTab, setActiveTab] = useState('resenas');
+      const [syncStatus, setSyncStatus] = useState('idle'); // idle | syncing | success | error
+      const [editorOpen, setEditorOpen] = useState(false);
+      const [editorType, setEditorType] = useState('resena');
+      const [editingItem, setEditingItem] = useState(null);
+      const [randomOpen, setRandomOpen] = useState(false);
+      const [detailItem, setDetailItem] = useState(null);
+
+      // Cargar al montar desde GAS y localStorage
+      useEffect(() => {
+        const local = localStorage.getItem('lugarcitos_state');
+        if (local) {
+          try {
+            setState(JSON.parse(local));
+          } catch(e) {}
+        }
+        fetchData();
+      }, []);
+
+      const fetchData = async () => {
+        setSyncStatus('syncing');
+        try {
+          const res = await fetch(GAS_URL);
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.resenas) {
+              setState(data);
+              localStorage.setItem('lugarcitos_state', JSON.stringify(data));
+            }
+          }
+          setSyncStatus('success');
+          setTimeout(() => setSyncStatus('idle'), 3000);
+        } catch (err) {
+          console.warn('Error sincronizando con GAS:', err);
+          setSyncStatus('error');
+          setTimeout(() => setSyncStatus('idle'), 3000);
+        }
+      };
+
+      const saveState = async (newState) => {
+        setState(newState);
+        localStorage.setItem('lugarcitos_state', JSON.stringify(newState));
+        setSyncStatus('syncing');
+        try {
+          const res = await fetch(GAS_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(newState)
+          });
+          if (res.ok) {
+            await res.json();
+            setSyncStatus('success');
+          } else {
+            setSyncStatus('error');
+          }
+        } catch(e) {
+          setSyncStatus('error');
+        }
+        setTimeout(() => setSyncStatus('idle'), 3000);
+      };
+
+      return (
+        <div className="min-h-screen flex flex-col bg-[#FAF8F5]">
+          {/* Header */}
+          <header className="sticky top-0 z-40 bg-[#FAF8F5]/90 backdrop-blur-md border-b border-[#181816]/10 px-4 lg:px-8 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('resenas')}>
+              <div className="w-10 h-10 rounded-xl bg-[#C85A32] text-white flex items-center justify-center font-serif-title text-xl shadow-md">
+                L
+              </div>
+              <div>
+                <h1 className="font-serif-title text-2xl text-[#181816] tracking-tight">Lugarcitos</h1>
+                <p className="text-xs text-[#737373] uppercase tracking-wider font-bold">Reseñas & Recetas</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className={`text-xs px-2.5 py-1 rounded-full font-bold flex items-center gap-1.5 ${
+                syncStatus === 'syncing' ? 'bg-[#FEF9E7] text-[#B27B13]' :
+                syncStatus === 'success' ? 'bg-[#EEF7EF] text-[#367643]' :
+                syncStatus === 'error' ? 'bg-[#FDF0F2] text-[#BA2D4C]' : 'bg-[#FAF8F5] text-[#737373] border border-[#181816]/10'
+              }`}>
+                <span className={`w-2 h-2 rounded-full ${
+                  syncStatus === 'syncing' ? 'bg-[#B27B13] animate-ping' :
+                  syncStatus === 'success' ? 'bg-[#367643]' :
+                  syncStatus === 'error' ? 'bg-[#BA2D4C]' : 'bg-[#737373]'
+                }`} />
+                {syncStatus === 'syncing' ? 'Sincronizando...' : syncStatus === 'success' ? 'Nube Sincronizada' : syncStatus === 'error' ? 'Modo Local' : 'Sintonizado'}
+              </span>
+
+              <button
+                onClick={() => setRandomOpen(true)}
+                className="hidden md:inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#FAF8F5] border border-[#181816]/15 text-[#181816] hover:border-[#C85A32] hover:text-[#C85A32] text-xs font-bold uppercase tracking-wider transition-all"
+              >
+                🎲 ¿Qué hacemos?
+              </button>
+
+              <button
+                onClick={() => { setEditingItem(null); setEditorType('resena'); setEditorOpen(true); }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#C85A32] text-white hover:bg-[#B04A26] text-xs font-bold uppercase tracking-wider transition-all shadow-md cursor-pointer"
+              >
+                + Nuevo
+              </button>
+            </div>
+          </header>
+
+          {/* Navegación por pestañas */}
+          <nav className="bg-white border-b border-[#181816]/10 px-4 lg:px-8 flex gap-6 overflow-x-auto">
+            {[
+              { id: 'resenas', label: '☕ Reseñas & Lugares' },
+              { id: 'recetas', label: '🍳 Recetas' },
+              { id: 'mapa', label: '🗺️ Mapa Interactivo' },
+              { id: 'pendientes', label: '✨ Pendientes' },
+              { id: 'galeria', label: '🖼️ Galería' }
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap cursor-pointer ${
+                  activeTab === tab.id
+                    ? 'border-[#C85A32] text-[#C85A32]'
+                    : 'border-transparent text-[#737373] hover:text-[#181816]'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+
+          {/* Contenido Principal */}
+          <main className="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 animate-fade-in">
+            {activeTab === 'resenas' && (
+              <ResenasView
+                state={state}
+                setState={saveState}
+                onOpenEditor={(item) => { setEditingItem(item); setEditorType('resena'); setEditorOpen(true); }}
+                onOpenDetail={(item) => setDetailItem(item)}
+              />
+            )}
+            {activeTab === 'recetas' && (
+              <RecetasView
+                state={state}
+                setState={saveState}
+                onOpenEditor={(item) => { setEditingItem(item); setEditorType('receta'); setEditorOpen(true); }}
+                onOpenDetail={(item) => setDetailItem(item)}
+              />
+            )}
+            {activeTab === 'mapa' && (
+              <MapView state={state} onOpenDetail={(item) => setDetailItem(item)} />
+            )}
+            {activeTab === 'pendientes' && (
+              <PendientesView state={state} setState={saveState} />
+            )}
+            {activeTab === 'galeria' && (
+              <GaleriaView state={state} setState={saveState} />
+            )}
+          </main>
+
+          {/* Footer */}
+          <footer className="border-t border-[#181816]/10 py-6 px-4 text-center text-xs text-[#737373] bg-white">
+            <p>© {new Date().getFullYear()} Lugarcitos — Creado con pasión y sincronizado con Google Apps Script.</p>
+          </footer>
+
+          {/* Modales */}
+          {editorOpen && (
+            <EditorModal
+              type={editorType}
+              item={editingItem}
+              onClose={() => setEditorOpen(false)}
+              onSave={(newItem) => {
+                if (editorType === 'resena') {
+                  const exists = state.resenas.some(r => r.id === newItem.id);
+                  const updatedResenas = exists
+                    ? state.resenas.map(r => r.id === newItem.id ? newItem : r)
+                    : [newItem, ...state.resenas];
+                  saveState({ ...state, resenas: updatedResenas, timestamp: Date.now() });
+                } else {
+                  const exists = state.recetas.some(r => r.id === newItem.id);
+                  const updatedRecetas = exists
+                    ? state.recetas.map(r => r.id === newItem.id ? newItem : r)
+                    : [newItem, ...state.recetas];
+                  saveState({ ...state, recetas: updatedRecetas, timestamp: Date.now() });
+                }
+                setEditorOpen(false);
+              }}
+            />
+          )}
+
+          {randomOpen && (
+            <RandomPickerModal state={state} onClose={() => setRandomOpen(false)} onSelect={(item) => setDetailItem(item)} />
+          )}
+
+          {detailItem && (
+            <DetailModal item={detailItem} onClose={() => setDetailItem(null)} />
+          )}
+        </div>
+      );
+    }
+
+    // Componente: Reseñas
+    function ResenasView({ state, setState, onOpenEditor, onOpenDetail }) {
+      const [search, setSearch] = useState('');
+      const [category, setCategory] = useState('Todos');
+
+      const categories = ['Todos', ...Array.from(new Set(state.resenas.map(r => r.categoria)))];
+
+      const filtered = state.resenas.filter(r => {
+        const matchesSearch = r.titulo.toLowerCase().includes(search.toLowerCase()) || r.barrio.toLowerCase().includes(search.toLowerCase());
+        const matchesCat = category === 'Todos' || r.categoria === category;
+        return matchesSearch && matchesCat;
+      });
+
+      return (
+        <div className="space-y-6">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <input
+              type="text"
+              placeholder="Buscar por nombre o barrio..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full md:w-80 px-4 py-2.5 rounded-xl bg-white border border-[#181816]/15 focus:outline-none focus:border-[#C85A32] text-sm"
+            />
+            <div className="flex gap-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+              {categories.map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setCategory(cat)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                    category === cat ? 'bg-[#C85A32] text-white shadow-sm' : 'bg-white border border-[#181816]/15 text-[#737373] hover:text-[#181816]'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map(item => {
+              const avg = calculateAverage(item.calificaciones);
+              return (
+                <div key={item.id} className="bg-white rounded-2xl border border-[#181816]/10 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group">
+                  <div className="relative h-48 overflow-hidden bg-[#FAF8F5] cursor-pointer" onClick={() => onOpenDetail(item)}>
+                    <img src={item.imagenUrl || 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80'} alt={item.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-full text-xs font-bold text-[#181816] shadow-xs">
+                      {item.categoria}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const updated = state.resenas.map(r => r.id === item.id ? { ...r, favorito: !r.favorito } : r);
+                        setState({ ...state, resenas: updated });
+                      }}
+                      className="absolute top-3 right-3 w-8 h-8 rounded-full bg-white/90 backdrop-blur-md flex items-center justify-center text-sm shadow-xs cursor-pointer hover:scale-110 transition-transform"
+                    >
+                      {item.favorito ? '❤️' : '🤍'}
+                    </button>
+                  </div>
+
+                  <div className="p-5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-serif-title text-xl text-[#181816] cursor-pointer hover:text-[#C85A32]" onClick={() => onOpenDetail(item)}>{item.titulo}</h3>
+                        <span className="text-xs font-bold bg-[#FEF9E7] text-[#B27B13] px-2 py-0.5 rounded-md">★ {avg}</span>
+                      </div>
+                      <p className="text-xs text-[#737373] font-medium mb-3">📍 {item.barrio}</p>
+                      <p className="text-sm text-[#181816]/80 line-clamp-2 mb-4">{item.descripcion}</p>
+                    </div>
+
+                    <div className="pt-4 border-t border-[#181816]/10 flex items-center justify-between">
+                      <button onClick={() => onOpenDetail(item)} className="text-xs font-bold uppercase tracking-wider text-[#C85A32] hover:underline cursor-pointer">
+                        Ver Detalles →
+                      </button>
+                      <div className="flex gap-2">
+                        <button onClick={() => onOpenEditor(item)} className="p-1.5 text-xs text-[#737373] hover:text-[#181816] bg-[#FAF8F5] rounded-lg cursor-pointer" title="Editar">✏️</button>
+                        <button onClick={() => {
+                          if (confirm('¿Eliminar esta reseña?')) {
+                            const updated = state.resenas.filter(r => r.id !== item.id);
+                            setState({ ...state, resenas: updated, deletedIds: [...(state.deletedIds || []), item.id] });
+                          }
+                        }} className="p-1.5 text-xs text-[#BA2D4C] bg-[#FDF0F2] rounded-lg cursor-pointer" title="Eliminar">🗑️</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    // Componente: Recetas
+    function RecetasView({ state, setState, onOpenEditor, onOpenDetail }) {
+      const [search, setSearch] = useState('');
+
+      const filtered = state.recetas.filter(r => r.titulo.toLowerCase().includes(search.toLowerCase()));
+
+      return (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <input
+              type="text"
+              placeholder="Buscar recetas..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full md:w-80 px-4 py-2.5 rounded-xl bg-white border border-[#181816]/15 focus:outline-none focus:border-[#C85A32] text-sm"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filtered.map(item => (
+              <div key={item.id} className="bg-white rounded-2xl border border-[#181816]/10 overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col group">
+                <div className="relative h-48 overflow-hidden bg-[#FAF8F5] cursor-pointer" onClick={() => onOpenDetail(item)}>
+                  <img src={item.imagenUrl || 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80'} alt={item.titulo} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-md px-2.5 py-1 rounded-full text-xs font-bold text-[#181816] shadow-xs">
+                    {item.categoria}
+                  </div>
+                </div>
+
+                <div className="p-5 flex-1 flex flex-col justify-between">
+                  <div>
+                    <h3 className="font-serif-title text-xl text-[#181816] mb-1 cursor-pointer hover:text-[#C85A32]" onClick={() => onOpenDetail(item)}>{item.titulo}</h3>
+                    <p className="text-xs text-[#737373] font-medium mb-3">⏱️ {item.tiempo} • ⚡ {item.dificultad}</p>
+                  </div>
+
+                  <div className="pt-4 border-t border-[#181816]/10 flex items-center justify-between">
+                    <button onClick={() => onOpenDetail(item)} className="text-xs font-bold uppercase tracking-wider text-[#C85A32] hover:underline cursor-pointer">
+                      Ver Receta →
+                    </button>
+                    <div className="flex gap-2">
+                      <button onClick={() => onOpenEditor(item)} className="p-1.5 text-xs text-[#737373] hover:text-[#181816] bg-[#FAF8F5] rounded-lg cursor-pointer">✏️</button>
+                      <button onClick={() => {
+                        if (confirm('¿Eliminar esta receta?')) {
+                          const updated = state.recetas.filter(r => r.id !== item.id);
+                          setState({ ...state, recetas: updated });
+                        }
+                      }} className="p-1.5 text-xs text-[#BA2D4C] bg-[#FDF0F2] rounded-lg cursor-pointer">🗑️</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // Componente: Mapa Interactivo
+    function MapView({ state, onOpenDetail }) {
+      const mapRef = useRef(null);
+      const mapInstanceRef = useRef(null);
+
+      useEffect(() => {
+        if (!mapInstanceRef.current && mapRef.current) {
+          const map = L.map(mapRef.current).setView([-34.6037, -58.3816], 13);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+          }).addTo(map);
+          mapInstanceRef.current = map;
+        }
+
+        const map = mapInstanceRef.current;
+        if (map) {
+          map.eachLayer(layer => {
+            if (layer instanceof L.Marker) {
+              map.removeLayer(layer);
+            }
+          });
+
+          state.resenas.forEach(item => {
+            if (item.lat && item.lng) {
+              const marker = L.marker([item.lat, item.lng]).addTo(map);
+              marker.bindPopup(`
+                <div style="font-family: 'Manrope', sans-serif; padding: 4px;">
+                  <h4 style="font-weight: 700; font-size: 14px; margin-bottom: 4px;">${item.titulo}</h4>
+                  <p style="font-size: 12px; color: #737373; margin-bottom: 6px;">${item.barrio}</p>
+                  <button id="popup-btn-${item.id}" style="background: #C85A32; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">Ver Reseña</button>
+                </div>
+              `);
+              marker.on('popupopen', () => {
+                const btn = document.getElementById(`popup-btn-${item.id}`);
+                if (btn) {
+                  btn.onclick = () => onOpenDetail(item);
+                }
+              });
+            }
+          });
+        }
+      }, [state.resenas]);
+
+      return (
+        <div className="w-full h-[650px] bg-white rounded-2xl border border-[#181816]/10 overflow-hidden shadow-sm p-2">
+          <div ref={mapRef} className="w-full h-full rounded-xl" />
+        </div>
+      );
+    }
+
+    // Componente: Pendientes
+    function PendientesView({ state, setState }) {
+      const [nuevo, setNuevo] = useState('');
+
+      const agregar = (e) => {
+        e.preventDefault();
+        if (!nuevo.trim()) return;
+        const item = { id: `p-${Date.now()}`, texto: nuevo.trim(), completado: false };
+        setState({ ...state, pendientes: [item, ...(state.pendientes || [])] });
+        setNuevo('');
+      };
+
+      return (
+        <div className="max-w-2xl mx-auto space-y-6">
+          <form onSubmit={agregar} className="flex gap-2">
+            <input
+              type="text"
+              placeholder="¿Qué lugarcito o receta pendiente tenés en mente?"
+              value={nuevo}
+              onChange={e => setNuevo(e.target.value)}
+              className="flex-1 px-4 py-3 rounded-xl bg-white border border-[#181816]/15 focus:outline-none focus:border-[#C85A32] text-sm shadow-sm"
+            />
+            <button type="submit" className="px-6 py-3 bg-[#C85A32] text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#B04A26] shadow-md cursor-pointer">
+              Agregar
+            </button>
+          </form>
+
+          <div className="bg-white rounded-2xl border border-[#181816]/10 divide-y divide-[#181816]/10 overflow-hidden shadow-sm">
+            {(state.pendientes || []).length === 0 ? (
+              <div className="p-8 text-center text-sm text-[#737373]">No hay pendientes guardados.</div>
+            ) : (
+              state.pendientes.map(p => (
+                <div key={p.id} className="p-4 flex items-center justify-between hover:bg-[#FAF8F5] transition-colors">
+                  <label className="flex items-center gap-3 cursor-pointer flex-1">
+                    <input
+                      type="checkbox"
+                      checked={p.completado}
+                      onChange={() => {
+                        const updated = state.pendientes.map(item => item.id === p.id ? { ...item, completado: !item.completado } : item);
+                        setState({ ...state, pendientes: updated });
+                      }}
+                      className="w-4 h-4 text-[#C85A32] rounded border-[#181816]/20 focus:ring-[#C85A32]"
+                    />
+                    <span className={`text-sm ${p.completado ? 'line-through text-[#737373]' : 'text-[#181816] font-medium'}`}>{p.texto}</span>
+                  </label>
+                  <button
+                    onClick={() => {
+                      const updated = state.pendientes.filter(item => item.id !== p.id);
+                      setState({ ...state, pendientes: updated });
+                    }}
+                    className="text-xs text-[#BA2D4C] hover:opacity-80 p-1 cursor-pointer"
+                  >
+                    🗑️
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Componente: Galería
+    function GaleriaView({ state, setState }) {
+      const [uploading, setUploading] = useState(false);
+
+      const handleUpload = async (e) => {
+        const files = e.target.files;
+        if (!files || !files.length) return;
+        setUploading(true);
+        const newItems = [...(state.galeria || [])];
+
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const formData = new FormData();
+          formData.append('image', file);
+          try {
+            const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, {
+              method: 'POST',
+              body: formData
+            });
+            const data = await res.json();
+            if (data && data.success) {
+              newItems.unshift({
+                id: `foto-${Date.now()}-${i}`,
+                url: data.data.display_url,
+                caption: file.name,
+                createdAt: new Date().toISOString()
+              });
+            }
+          } catch(err) {
+            console.error('Error subiendo imagen:', err);
+          }
+        }
+        setState({ ...state, galeria: newItems });
+        setUploading(false);
+      };
+
+      return (
+        <div className="space-y-6">
+          <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-[#181816]/10 shadow-sm">
+            <div>
+              <h3 className="font-serif-title text-xl text-[#181816]">Galería Multimedia</h3>
+              <p className="text-xs text-[#737373]">Sube tus fotos gastronómicas y recuerdos de lugarcitos.</p>
+            </div>
+            <label className="px-4 py-2.5 bg-[#C85A32] text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-[#B04A26] shadow-md cursor-pointer inline-flex items-center gap-2">
+              {uploading ? 'Subiendo...' : '📸 Subir Fotos'}
+              <input type="file" multiple accept="image/*" onChange={handleUpload} className="hidden" />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {(state.galeria || []).map(foto => (
+              <div key={foto.id} className="relative group bg-white rounded-xl overflow-hidden border border-[#181816]/10 shadow-xs h-48">
+                <img src={foto.url} alt={foto.caption} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                <button
+                  onClick={() => {
+                    const updated = state.galeria.filter(f => f.id !== foto.id);
+                    setState({ ...state, galeria: updated });
+                  }}
+                  className="absolute top-2 right-2 bg-white/90 text-[#BA2D4C] p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity text-xs cursor-pointer shadow-sm"
+                >
+                  🗑️
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // Modal: Editor
+    function EditorModal({ type, item, onClose, onSave }) {
+      const [form, setForm] = useState(item || {
+        id: type === 'resena' ? `res-${Date.now()}` : `rec-${Date.now()}`,
+        titulo: '',
+        categoria: type === 'resena' ? 'Cafetería' : 'Pastelería',
+        barrio: '',
+        direccion: '',
+        lat: -34.6037,
+        lng: -58.3816,
+        descripcion: '',
+        recomendacion: '',
+        imagenUrl: '',
+        calificaciones: { ambiente: 5, servicio: 5, comida: 5, precioCalidad: 5 },
+        tiempo: '45 mins',
+        dificultad: 'Media',
+        ingredientes: [''],
+        pasos: ['']
+      });
+
+      const [uploading, setUploading] = useState(false);
+
+      const handleImageUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setUploading(true);
+        const formData = new FormData();
+        formData.append('image', file);
+        try {
+          const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, { method: 'POST', body: formData });
+          const data = await res.json();
+          if (data && data.success) {
+            setForm({ ...form, imagenUrl: data.data.display_url });
+          }
+        } catch(e) {}
+        setUploading(false);
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        onSave(form);
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden animate-fade-in my-8">
+            <div className="p-6 border-b border-[#181816]/10 flex justify-between items-center bg-[#FAF8F5]">
+              <h3 className="font-serif-title text-2xl text-[#181816]">
+                {item ? 'Editar' : 'Nuevo'} {type === 'resena' ? 'Reseña' : 'Receta'}
+              </h3>
+              <button onClick={onClose} className="text-[#737373] hover:text-[#181816] text-lg font-bold cursor-pointer">✕</button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#737373] mb-1">Título</label>
+                <input
+                  type="text"
+                  required
+                  value={form.titulo}
+                  onChange={e => setForm({ ...form, titulo: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#181816]/15 focus:outline-none focus:border-[#C85A32] text-sm"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#737373] mb-1">Categoría</label>
+                  <input
+                    type="text"
+                    required
+                    value={form.categoria}
+                    onChange={e => setForm({ ...form, categoria: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#181816]/15 focus:outline-none focus:border-[#C85A32] text-sm"
+                  />
+                </div>
+                {type === 'resena' ? (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#737373] mb-1">Barrio</label>
+                    <input
+                      type="text"
+                      value={form.barrio}
+                      onChange={e => setForm({ ...form, barrio: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl border border-[#181816]/15 focus:outline-none focus:border-[#C85A32] text-sm"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-[#737373] mb-1">Tiempo</label>
+                    <input
+                      type="text"
+                      value={form.tiempo}
+                      onChange={e => setForm({ ...form, tiempo: e.target.value })}
+                      className="w-full px-4 py-2.5 rounded-xl border border-[#181816]/15 focus:outline-none focus:border-[#C85A32] text-sm"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {type === 'resena' && (
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-[#737373] mb-1">Dirección</label>
+                  <input
+                    type="text"
+                    value={form.direccion}
+                    onChange={e => setForm({ ...form, direccion: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-[#181816]/15 focus:outline-none focus:border-[#C85A32] text-sm"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#737373] mb-1">Imagen (URL o Subir archivo)</label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    placeholder="https://..."
+                    value={form.imagenUrl}
+                    onChange={e => setForm({ ...form, imagenUrl: e.target.value })}
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-[#181816]/15 focus:outline-none focus:border-[#C85A32] text-sm"
+                  />
+                  <label className="px-4 py-2.5 bg-[#FAF8F5] border border-[#181816]/15 rounded-xl text-xs font-bold uppercase tracking-wider cursor-pointer hover:border-[#C85A32] flex items-center">
+                    {uploading ? '...' : 'Subir'}
+                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-[#737373] mb-1">Descripción</label>
+                <textarea
+                  rows="3"
+                  value={form.descripcion}
+                  onChange={e => setForm({ ...form, descripcion: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-[#181816]/15 focus:outline-none focus:border-[#C85A32] text-sm"
+                />
+              </div>
+
+              <div className="pt-4 border-t border-[#181816]/15 flex justify-end gap-3">
+                <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-[#737373] hover:bg-[#FAF8F5] cursor-pointer">
+                  Cancelar
+                </button>
+                <button type="submit" className="px-6 py-2.5 rounded-xl bg-[#C85A32] text-white text-xs font-bold uppercase tracking-wider hover:bg-[#B04A26] shadow-md cursor-pointer">
+                  Guardar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // Modal: Selector Aleatorio
+    function RandomPickerModal({ state, onClose, onSelect }) {
+      const [spinning, setSpinning] = useState(false);
+      const [picked, setPicked] = useState(null);
+
+      const spin = () => {
+        if (!state.resenas.length) return;
+        setSpinning(true);
+        setTimeout(() => {
+          const rand = state.resenas[Math.floor(Math.random() * state.resenas.length)];
+          setPicked(rand);
+          setSpinning(false);
+        }, 1200);
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-3xl p-6 text-center shadow-2xl animate-fade-in space-y-6">
+            <h3 className="font-serif-title text-2xl text-[#181816]">🎲 ¿Qué lugarcito visitamos hoy?</h3>
+
+            {picked ? (
+              <div className="space-y-4">
+                <img src={picked.imagenUrl} alt={picked.titulo} className="w-full h-48 object-cover rounded-xl shadow-sm" />
+                <h4 className="font-serif-title text-2xl text-[#C85A32]">{picked.titulo}</h4>
+                <p className="text-xs text-[#737373]">📍 {picked.barrio}</p>
+                <button onClick={() => { onSelect(picked); onClose(); }} className="w-full py-3 bg-[#C85A32] text-white rounded-xl text-xs font-bold uppercase tracking-wider shadow-md cursor-pointer">
+                  Ver Reseña Completa
+                </button>
+              </div>
+            ) : (
+              <div className="py-8">
+                <button
+                  disabled={spinning}
+                  onClick={spin}
+                  className="px-8 py-4 bg-[#C85A32] text-white rounded-2xl text-sm font-bold uppercase tracking-wider hover:bg-[#B04A26] shadow-lg cursor-pointer disabled:opacity-50"
+                >
+                  {spinning ? 'Girar la ruleta...' : '¡Girar ruleta!'}
+                </button>
+              </div>
+            )}
+
+            <button onClick={onClose} className="text-xs font-bold text-[#737373] hover:text-[#181816] cursor-pointer">Cerrar</button>
+          </div>
+        </div>
+      );
+    }
+
+    // Modal: Detalle
+    function DetailModal({ item, onClose }) {
+      return (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden shadow-2xl animate-fade-in my-8">
+            <div className="relative h-64 bg-[#FAF8F5]">
+              <img src={item.imagenUrl} alt={item.titulo} className="w-full h-full object-cover" />
+              <button onClick={onClose} className="absolute top-4 right-4 bg-white/90 w-8 h-8 rounded-full font-bold shadow-md cursor-pointer flex items-center justify-center">✕</button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-serif-title text-3xl text-[#181816]">{item.titulo}</h3>
+                <span className="text-xs font-bold bg-[#FEF9E7] text-[#B27B13] px-3 py-1 rounded-full">{item.categoria}</span>
+              </div>
+              {item.barrio && <p className="text-sm font-bold text-[#737373]">📍 {item.barrio} {item.direccion ? `• ${item.direccion}` : ''}</p>}
+              <p className="text-base text-[#181816]/80 leading-relaxed">{item.descripcion}</p>
+              {item.recomendacion && (
+                <div className="bg-[#FAF8F5] p-4 rounded-xl border border-[#181816]/10">
+                  <p className="text-xs font-bold uppercase tracking-wider text-[#C85A32] mb-1">Recomendación estrella</p>
+                  <p className="text-sm text-[#181816]">{item.recomendacion}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    function calculateAverage(cal) {
+      if (!cal) return 0;
+      const vals = Object.values(cal).filter(v => typeof v === 'number');
+      if (!vals.length) return 0;
+      return (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1);
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+{
+  "name": "Lugarcitos",
+  "description": "Sobre gustos hay algo escrito. Guía gastronómica editorial, reseñas ilustradas, recetas y mapa interactivo de lugares recomendados y pendientes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

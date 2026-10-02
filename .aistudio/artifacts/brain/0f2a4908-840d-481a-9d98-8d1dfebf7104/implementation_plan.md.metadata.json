@@ -1,0 +1,6 @@
+{
+  "summary":  "Plan para actualizar la nueva URL de Google Apps Script en src/services/gasService.ts y en el artefacto standalone, y verificar el build para Netlify.",
+  "updatedAt":  "2026-10-02T14:10:05.772850037Z",
+  "requestFeedback":  true,
+  "userFacing":  true
+}
